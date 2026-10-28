@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { appendPerSecond } from "@/lib/history";
 import type { OrderBook, Quote, StreamEvent } from "@/lib/types";
 
-/** 종목당 브라우저에 유지할 최대 시세 수 */
-const MAX_HISTORY = 2_000;
+/** 종목당 브라우저에 유지할 최대 시세 수 (1초당 1개 → 1시간치) */
+const MAX_HISTORY = 3_600;
 
 export interface SymbolFeed {
   latest: Quote | null;
@@ -54,11 +55,11 @@ export function useQuoteStream(symbols: string[], onQuote: (quote: Quote) => voi
         if (latest) onQuoteRef.current(latest);
       } else if (event.type === "quote") {
         const { quote } = event;
-        updateFeed(quote.symbol, (feed) => ({
-          latest: quote,
-          history: [...feed.history, quote].slice(-MAX_HISTORY),
-          error: null,
-        }));
+        updateFeed(quote.symbol, (feed) => {
+          const history = [...feed.history];
+          appendPerSecond(history, quote, MAX_HISTORY);
+          return { latest: quote, history, error: null };
+        });
         onQuoteRef.current(quote);
       } else if (event.type === "orderbook") {
         updateFeed(event.symbol, () => ({ orderBook: event.orderBook }));

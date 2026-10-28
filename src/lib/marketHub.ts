@@ -1,10 +1,11 @@
+import { appendPerSecond } from "@/lib/history";
 import { getQuoteProvider } from "@/lib/providers";
 import type { OrderBook, Quote, QuoteProvider, StreamEvent } from "@/lib/types";
 
-/** 종목당 서버 메모리에 보관할 최근 시세 개수 */
-const HISTORY_LIMIT = 2_000;
-/** 새로 접속한 브라우저에 처음 보내줄 시세 개수 */
-const SNAPSHOT_LIMIT = 500;
+/** 종목당 서버 메모리에 보관할 시세 개수 (1초당 1개 → 1시간치) */
+const HISTORY_LIMIT = 3_600;
+/** 새로 접속한 브라우저에 처음 보내줄 시세 개수 (1분 단위 차트 30개를 채울 수 있는 30분치) */
+const SNAPSHOT_LIMIT = 1_800;
 /** 보는 사람이 없어도 이 시간 동안은 계속 수신해 데이터를 쌓아 둔다 */
 const IDLE_RELEASE_MS = 60 * 60 * 1000;
 const DEFAULT_INTERVAL_MS = 2_000;
@@ -67,8 +68,7 @@ class MarketHub {
     // REST 스냅샷에는 체결강도가 없으므로 직전 실시간 값을 유지한다
     const last = entry.history.at(-1);
     const merged = { ...quote, strength: quote.strength ?? last?.strength };
-    entry.history.push(merged);
-    if (entry.history.length > HISTORY_LIMIT) entry.history.splice(0, entry.history.length - HISTORY_LIMIT);
+    appendPerSecond(entry.history, merged, HISTORY_LIMIT);
     this.broadcast(entry, { type: "quote", quote: merged });
   }
 

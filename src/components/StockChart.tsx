@@ -12,12 +12,13 @@ import {
   type ISeriesApi,
   type UTCTimestamp,
 } from "lightweight-charts";
+import { averageByBucket } from "@/lib/history";
 import type { Quote, WatchItem } from "@/lib/types";
 
 /** lightweight-charts는 UTC로 표시하므로 KST로 보이도록 보정 */
 const KST_OFFSET_SEC = 9 * 60 * 60;
 
-/** 차트에 보여줄 최근 시세 개수 */
+/** 차트에 보여줄 최근 구간 개수 */
 const MAX_POINTS = 30;
 
 const COLORS = {
@@ -39,16 +40,14 @@ const LINE_TITLES: Record<LineKey, string> = {
   lowTarget: "목표 최저가",
 };
 
-function toChartTime(timestamp: number) {
-  return (Math.floor(timestamp / 1000) + KST_OFFSET_SEC) as UTCTimestamp;
-}
-
 interface Props {
   history: Quote[];
   item: WatchItem;
+  /** 이 초 단위 구간마다 평균 가격 하나로 묶어 그린다 */
+  bucketSec: number;
 }
 
-export default function StockChart({ history, item }: Props) {
+export default function StockChart({ history, item, bucketSec }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Area"> | null>(null);
@@ -83,19 +82,17 @@ export default function StockChart({ history, item }: Props) {
     };
   }, [item.symbol]);
 
-  // 최근 MAX_POINTS개를 매번 다시 그리고 화면 폭에 맞춘다.
+  // bucketSec 단위 평균으로 묶은 최근 MAX_POINTS개를 매번 다시 그리고 화면 폭에 맞춘다.
   // (처음 1~2개일 때 fitContent한 간격이 고정되면 새 점이 화면 밖으로 밀려나므로)
   useEffect(() => {
     const series = seriesRef.current;
     if (!series || history.length === 0) return;
 
-    // 같은 초에 여러 포인트가 오면 마지막 값만 남긴다 (시간축은 오름차순·고유해야 함)
-    const bySecond = new Map<number, number>();
-    for (const q of history) bySecond.set(toChartTime(q.timestamp), q.price);
-    const points = [...bySecond].slice(-MAX_POINTS);
-    series.setData(points.map(([time, value]) => ({ time: time as UTCTimestamp, value })));
+    const points = averageByBucket(history, bucketSec).slice(-MAX_POINTS);
+    series.setData(points.map(({ time, price }) => ({ time: (time + KST_OFFSET_SEC) as UTCTimestamp, value: price })));
+    chartRef.current?.applyOptions({ timeScale: { secondsVisible: bucketSec < 60 } });
     chartRef.current?.timeScale().fitContent();
-  }, [history]);
+  }, [history, bucketSec]);
 
   // 장중 고/저가와 목표가 수평선
   const latest = history.at(-1);

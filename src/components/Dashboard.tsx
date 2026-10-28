@@ -10,6 +10,13 @@ import { AlarmTracker, playBeep, showBrowserNotification, unlockAudio, type Alar
 import type { Quote, WatchItem } from "@/lib/types";
 
 const MAX_ALARM_LOG = 50;
+/** 차트 묶음 단위 선택지 [라벨, 초] */
+const BUCKET_OPTIONS: [string, number][] = [
+  ["1초", 1],
+  ["10초", 10],
+  ["1분", 60],
+];
+const DEFAULT_BUCKET_SEC = 10;
 const APP_TITLE = "주가 알람";
 
 const noopSubscribe = () => () => {};
@@ -56,6 +63,7 @@ const STATUS_LABEL: Record<ConnectionStatus, [string, string]> = {
 export default function Dashboard() {
   const { items, upsert, remove } = useWatchlist();
   const [selected, setSelected] = useState<string | null>(null);
+  const [bucketSec, setBucketSec] = useState(DEFAULT_BUCKET_SEC);
   const [editing, setEditing] = useState<string | null>(null);
   const [alarmLog, setAlarmLog] = useState<AlarmEvent[]>([]);
   const [pending, setPending] = useState<AlarmEvent[]>([]);
@@ -168,8 +176,31 @@ export default function Dashboard() {
           {selectedItem ? (
             <>
               <QuoteSummary item={selectedItem} feed={selectedFeed} />
-              <div className="h-[420px] rounded-lg border border-gray-200 p-2">
-                <StockChart key={selectedItem.symbol} item={selectedItem} history={selectedFeed?.history ?? []} />
+              <div className="flex flex-col rounded-lg border border-gray-200 p-2">
+                <div className="flex items-center justify-between px-2 pb-2">
+                  <span className="text-xs text-gray-500">최근 30구간 평균 가격</span>
+                  <div className="flex rounded-md border border-gray-200 text-xs">
+                    {BUCKET_OPTIONS.map(([label, sec]) => (
+                      <button
+                        key={sec}
+                        onClick={() => setBucketSec(sec)}
+                        className={`px-3 py-1 first:rounded-l-md last:rounded-r-md ${
+                          bucketSec === sec ? "bg-gray-900 text-white" : "text-gray-600 hover:bg-gray-100"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="h-[400px]">
+                  <StockChart
+                    key={selectedItem.symbol}
+                    item={selectedItem}
+                    history={selectedFeed?.history ?? []}
+                    bucketSec={bucketSec}
+                  />
+                </div>
               </div>
               <MarketFlow symbol={selectedItem.symbol} liveOrderBook={selectedFeed?.orderBook ?? null} />
             </>
