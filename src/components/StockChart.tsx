@@ -2,9 +2,10 @@
 
 import { useEffect, useRef } from "react";
 import {
+  AreaSeries,
   ColorType,
-  LineSeries,
   LineStyle,
+  LineType,
   createChart,
   type IChartApi,
   type IPriceLine,
@@ -16,8 +17,13 @@ import type { Quote, WatchItem } from "@/lib/types";
 /** lightweight-charts는 UTC로 표시하므로 KST로 보이도록 보정 */
 const KST_OFFSET_SEC = 9 * 60 * 60;
 
+/** 차트에 보여줄 최근 시세 개수 */
+const MAX_POINTS = 30;
+
 const COLORS = {
-  line: "#111827",
+  line: "#0ea5e9",
+  areaTop: "rgba(56, 189, 248, 0.45)",
+  areaBottom: "rgba(56, 189, 248, 0.02)",
   dayHigh: "#dc2626",
   dayLow: "#2563eb",
   highTarget: "#d97706",
@@ -45,10 +51,8 @@ interface Props {
 export default function StockChart({ history, item }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
-  const seriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const seriesRef = useRef<ISeriesApi<"Area"> | null>(null);
   const priceLinesRef = useRef<Partial<Record<LineKey, IPriceLine>>>({});
-  /** 마지막으로 그린 시세 시각. null이면 다음 업데이트에서 setData로 전체를 그린다 */
-  const lastTimeRef = useRef<number | null>(null);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -63,33 +67,34 @@ export default function StockChart({ history, item }: Props) {
       localization: { priceFormatter: (price: number) => Math.round(price).toLocaleString() },
     });
     chartRef.current = chart;
-    seriesRef.current = chart.addSeries(LineSeries, { color: COLORS.line, lineWidth: 2 });
+    seriesRef.current = chart.addSeries(AreaSeries, {
+      lineColor: COLORS.line,
+      lineWidth: 2,
+      lineType: LineType.Curved,
+      topColor: COLORS.areaTop,
+      bottomColor: COLORS.areaBottom,
+    });
 
     return () => {
       chart.remove();
       chartRef.current = null;
       seriesRef.current = null;
       priceLinesRef.current = {};
-      lastTimeRef.current = null;
     };
   }, [item.symbol]);
 
-  // 시세 데이터: 처음엔 전체를 그리고, 이후엔 새 포인트만 이어 붙인다
+  // 최근 MAX_POINTS개를 매번 다시 그리고 화면 폭에 맞춘다.
+  // (처음 1~2개일 때 fitContent한 간격이 고정되면 새 점이 화면 밖으로 밀려나므로)
   useEffect(() => {
     const series = seriesRef.current;
-    const last = history.at(-1);
-    if (!series || !last) return;
+    if (!series || history.length === 0) return;
 
-    if (lastTimeRef.current === null) {
-      // 같은 초에 여러 포인트가 오면 마지막 값만 남긴다 (시간축은 오름차순·고유해야 함)
-      const bySecond = new Map<number, number>();
-      for (const q of history) bySecond.set(toChartTime(q.timestamp), q.price);
-      series.setData([...bySecond].map(([time, value]) => ({ time: time as UTCTimestamp, value })));
-      chartRef.current?.timeScale().fitContent();
-    } else {
-      series.update({ time: toChartTime(last.timestamp), value: last.price });
-    }
-    lastTimeRef.current = last.timestamp;
+    // 같은 초에 여러 포인트가 오면 마지막 값만 남긴다 (시간축은 오름차순·고유해야 함)
+    const bySecond = new Map<number, number>();
+    for (const q of history) bySecond.set(toChartTime(q.timestamp), q.price);
+    const points = [...bySecond].slice(-MAX_POINTS);
+    series.setData(points.map(([time, value]) => ({ time: time as UTCTimestamp, value })));
+    chartRef.current?.timeScale().fitContent();
   }, [history]);
 
   // 장중 고/저가와 목표가 수평선
