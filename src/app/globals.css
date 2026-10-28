@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 :root {
+  /* OS가 다크 모드여도 입력창·스크롤바 등을 밝은 테마로 그린다 */
+  color-scheme: light;
   --background: #ffffff;
   --foreground: #111827;
 }
