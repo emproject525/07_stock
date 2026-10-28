@@ -36,6 +36,35 @@ export interface WatchItem {
   highTarget: number | null;
 }
 
+export interface OrderBookLevel {
+  price: number;
+  /** 잔량 (주) */
+  quantity: number;
+}
+
+/** 호가 잔량 */
+export interface OrderBook {
+  /** 총 매도 잔량 */
+  totalAsk: number;
+  /** 총 매수 잔량 */
+  totalBid: number;
+  /** 매도 호가 (높은 가격 → 낮은 가격) */
+  asks: OrderBookLevel[];
+  /** 매수 호가 (높은 가격 → 낮은 가격) */
+  bids: OrderBookLevel[];
+}
+
+/** 하루치 투자자별 순매수 수량 (주, 음수면 순매도) */
+export interface InvestorTrend {
+  /** YYYY-MM-DD */
+  date: string;
+  foreign: number;
+  institution: number;
+  individual: number;
+  /** 외국인 보유 비율 (예: "48.61%") */
+  foreignHoldRatio: string;
+}
+
 export type StreamEvent =
   | { type: "quote"; quote: Quote }
   | { type: "error"; symbol: string; message: string };

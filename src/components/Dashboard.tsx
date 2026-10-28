@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import MarketFlow from "@/components/MarketFlow";
 import StockChart from "@/components/StockChart";
 import WatchItemForm from "@/components/WatchItemForm";
 import { useQuoteStream, type ConnectionStatus, type SymbolFeed } from "@/hooks/useQuoteStream";
@@ -170,6 +171,7 @@ export default function Dashboard() {
               <div className="h-[420px] rounded-lg border border-gray-200 p-2">
                 <StockChart key={selectedItem.symbol} item={selectedItem} history={selectedFeed?.history ?? []} />
               </div>
+              <MarketFlow symbol={selectedItem.symbol} />
             </>
           ) : (
             <p className="text-gray-500">왼쪽에서 종목을 추가하면 실시간 차트가 표시됩니다.</p>
