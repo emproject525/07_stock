@@ -34,6 +34,9 @@ yarn-error.log*
 .env*
 !.env.example
 
+# KIS 접근 토큰 캐시
+.kis-token.json
+
 # vercel
 .vercel
 
