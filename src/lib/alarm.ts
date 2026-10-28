@@ -39,7 +39,7 @@ export class AlarmTracker {
       events.push({
         id: `${key}:${quote.timestamp}`,
         symbol: item.symbol,
-        name: item.name || item.symbol,
+        name: item.name || quote.name || item.symbol,
         side,
         target,
         price: quote.price,

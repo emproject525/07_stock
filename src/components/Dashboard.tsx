@@ -28,6 +28,11 @@ function formatPrice(n: number | null | undefined) {
   return n === null || n === undefined ? "-" : n.toLocaleString();
 }
 
+/** 사용자가 붙인 이름 → 공급자 종목명 → 종목코드 순으로 표시 */
+function displayNameOf(item: WatchItem, quote: Quote | null) {
+  return item.name || quote?.name || item.symbol;
+}
+
 function changeOf(quote: Quote | null) {
   if (!quote || !quote.prevClose) return null;
   const diff = quote.price - quote.prevClose;
@@ -218,6 +223,7 @@ function WatchRow({ item, feed, active, editing, onSelect, onEdit, onSave, onCan
 
   const quote = feed?.latest ?? null;
   const change = changeOf(quote);
+  const displayName = displayNameOf(item, quote);
 
   return (
     <div
@@ -226,7 +232,7 @@ function WatchRow({ item, feed, active, editing, onSelect, onEdit, onSave, onCan
     >
       <div className="flex items-baseline justify-between">
         <span className="font-medium">
-          {item.name || item.symbol} {item.name && <span className="text-xs text-gray-500">{item.symbol}</span>}
+          {displayName} {displayName !== item.symbol && <span className="text-xs text-gray-500">{item.symbol}</span>}
         </span>
         <span className={`font-mono ${changeColor(change?.diff)}`}>{formatPrice(quote?.price)}</span>
       </div>
@@ -277,7 +283,7 @@ function QuoteSummary({ item, feed }: { item: WatchItem; feed: SymbolFeed | unde
   return (
     <section className="flex flex-col gap-3">
       <div className="flex flex-wrap items-baseline gap-3">
-        <h2 className="text-xl font-semibold">{item.name || item.symbol}</h2>
+        <h2 className="text-xl font-semibold">{displayNameOf(item, quote)}</h2>
         <span className="text-sm text-gray-500">{item.symbol}</span>
         <span className={`font-mono text-3xl font-bold ${changeColor(change?.diff)}`}>{formatPrice(quote?.price)}</span>
         {change && (

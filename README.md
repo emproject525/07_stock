@@ -16,8 +16,9 @@ http://localhost:3700 접속 → 상단 **🔔 알림·소리 켜기** 클릭(�
 
 | `QUOTE_PROVIDER` | 설명 |
 | --- | --- |
-| `mock` (기본) | 랜덤 워크로 만든 가짜 시세. API 키 없이 화면/알람 테스트용 |
+| `naver` (기본) | 네이버 금융 실시간 시세 폴링. 키 없이 무료, 지연 없음. **비공식 API**라 예고 없이 바뀌거나 막힐 수 있음 |
 | `kis` | 한국투자증권 KIS Developers REST API (주식현재가 시세 폴링) |
+| `mock` | 랜덤 워크로 만든 가짜 시세. 장 마감 후 화면/알람 테스트용 |
 
 `kis` 사용 시 [KIS Developers](https://apiportal.koreainvestment.com)에서 App Key/Secret을 발급받아 `.env.local`에 넣는다.
 다른 증권사를 붙이려면 `src/lib/providers/`에 `QuoteProvider` 구현을 추가하고 `index.ts`에 등록하면 된다.

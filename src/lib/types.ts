@@ -1,6 +1,8 @@
 /** 한 시점의 종목 시세 */
 export interface Quote {
   symbol: string;
+  /** 종목명 (공급자가 제공하는 경우) */
+  name?: string;
   /** 현재가 */
   price: number;
   /** 당일 장중 최고가 */
