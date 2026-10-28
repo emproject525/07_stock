@@ -2,6 +2,8 @@ import type { WatchItem } from "@/lib/types";
 
 const STORAGE_KEY = "stock-alarm.watchlist";
 const EMPTY: WatchItem[] = [];
+/** 처음 방문했을 때(저장된 목록이 없을 때) 보여줄 기본 종목 */
+const DEFAULT_ITEMS: WatchItem[] = [{ symbol: "000660", name: "SK하이닉스", lowTarget: null, highTarget: null }];
 
 let items: WatchItem[] | null = null;
 const listeners = new Set<() => void>();
@@ -9,7 +11,8 @@ const listeners = new Set<() => void>();
 function load(): WatchItem[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as WatchItem[]) : EMPTY;
+    // 사용자가 전부 삭제한 경우("[]" 저장됨)에는 기본 종목을 다시 넣지 않는다
+    return raw === null ? DEFAULT_ITEMS : (JSON.parse(raw) as WatchItem[]);
   } catch {
     return EMPTY;
   }
