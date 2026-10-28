@@ -6,7 +6,14 @@ import StockChart from "@/components/StockChart";
 import WatchItemForm from "@/components/WatchItemForm";
 import { useQuoteStream, type ConnectionStatus, type SymbolFeed } from "@/hooks/useQuoteStream";
 import { useWatchlist } from "@/hooks/useWatchlist";
-import { AlarmTracker, playBeep, showBrowserNotification, unlockAudio, type AlarmEvent } from "@/lib/alarm";
+import {
+  AlarmTracker,
+  audioStore,
+  playBeep,
+  showBrowserNotification,
+  unlockAudio,
+  type AlarmEvent,
+} from "@/lib/alarm";
 import type { Quote, WatchItem } from "@/lib/types";
 
 const MAX_ALARM_LOG = 50;
@@ -28,8 +35,36 @@ function useNotificationPermission() {
     () => (typeof Notification === "undefined" ? "denied" : Notification.permission),
     () => "default" as NotificationPermission,
   );
-  const request = async () => setRequested(await Notification.requestPermission());
+  const request = useCallback(async () => setRequested(await Notification.requestPermission()), []);
   return { permission: requested ?? current, request };
+}
+
+/**
+ * 알림·소리를 기본으로 켠다.
+ * 브라우저가 사용자 동작 없이는 막는 경우가 있어, 그때는 페이지 어디든 첫 클릭/키 입력 시 다시 시도한다.
+ */
+function useAutoEnableAlerts() {
+  const soundOn = useSyncExternalStore(audioStore.subscribe, audioStore.getSnapshot, audioStore.getServerSnapshot);
+  const { permission, request } = useNotificationPermission();
+  const needsAction = !soundOn || permission === "default";
+
+  const enable = useCallback(() => {
+    unlockAudio();
+    if (typeof Notification !== "undefined" && Notification.permission === "default") void request();
+  }, [request]);
+
+  useEffect(() => {
+    if (!needsAction) return;
+    enable();
+    document.addEventListener("pointerdown", enable);
+    document.addEventListener("keydown", enable);
+    return () => {
+      document.removeEventListener("pointerdown", enable);
+      document.removeEventListener("keydown", enable);
+    };
+  }, [needsAction, enable]);
+
+  return { soundOn, permission, needsAction, enable };
 }
 
 function formatPrice(n: number | null | undefined) {
@@ -67,8 +102,7 @@ export default function Dashboard() {
   const [editing, setEditing] = useState<string | null>(null);
   const [alarmLog, setAlarmLog] = useState<AlarmEvent[]>([]);
   const [pending, setPending] = useState<AlarmEvent[]>([]);
-  const [soundOn, setSoundOn] = useState(false);
-  const { permission, request } = useNotificationPermission();
+  const { permission, needsAction, enable: enableAlerts } = useAutoEnableAlerts();
 
   const trackerRef = useRef(new AlarmTracker());
   const itemsRef = useRef(items);
@@ -100,12 +134,6 @@ export default function Dashboard() {
     document.title = pending.length > 0 ? `🔔 (${pending.length}) ${APP_TITLE}` : APP_TITLE;
   }, [pending.length]);
 
-  const enableAlerts = async () => {
-    unlockAudio();
-    setSoundOn(true);
-    if (permission === "default") await request();
-  };
-
   const selectedItem = items.find((i) => i.symbol === selected) ?? items[0] ?? null;
   const selectedFeed: SymbolFeed | undefined = selectedItem ? feeds[selectedItem.symbol] : undefined;
   const [statusLabel, statusDot] = STATUS_LABEL[status];
@@ -119,7 +147,7 @@ export default function Dashboard() {
             <span className={`h-2 w-2 rounded-full ${statusDot}`} />
             {statusLabel}
           </span>
-          {(!soundOn || permission !== "granted") && (
+          {needsAction && (
             <button onClick={enableAlerts} className="rounded-md bg-amber-500 px-3 py-1 font-medium text-gray-900 hover:bg-amber-400">
               🔔 알림·소리 켜기
             </button>

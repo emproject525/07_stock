@@ -52,14 +52,32 @@ export class AlarmTracker {
 
 let audioContext: AudioContext | null = null;
 
-/** 브라우저 자동재생 정책 때문에 사용자 클릭 시점에 한 번 호출해 두어야 소리가 난다 */
-export function unlockAudio() {
+function getAudioContext() {
   audioContext ??= new AudioContext();
-  void audioContext.resume();
+  return audioContext;
 }
 
+/**
+ * 소리를 켠다. 브라우저 자동재생 정책 때문에 사용자 클릭/키 입력 전에는
+ * suspended 상태로 남을 수 있으며, 그 경우 클릭 시점에 다시 호출하면 켜진다.
+ */
+export function unlockAudio() {
+  void getAudioContext().resume();
+}
+
+/** useSyncExternalStore용: 소리를 낼 수 있는 상태인지 구독 */
+export const audioStore = {
+  subscribe(listener: () => void) {
+    const ctx = getAudioContext();
+    ctx.addEventListener("statechange", listener);
+    return () => ctx.removeEventListener("statechange", listener);
+  },
+  getSnapshot: () => getAudioContext().state === "running",
+  getServerSnapshot: () => false,
+};
+
 export function playBeep(side: AlarmSide) {
-  if (!audioContext) return;
+  if (audioContext?.state !== "running") return;
   const now = audioContext.currentTime;
   const frequencies = side === "high" ? [880, 1175, 880] : [523, 392, 523];
   frequencies.forEach((frequency, i) => {
