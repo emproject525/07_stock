@@ -41,8 +41,8 @@ function changeOf(quote: Quote | null) {
 
 /** 한국 시장 관례: 상승 빨강, 하락 파랑 */
 function changeColor(diff: number | undefined) {
-  if (!diff) return "text-gray-300";
-  return diff > 0 ? "text-red-400" : "text-blue-400";
+  if (!diff) return "text-gray-700";
+  return diff > 0 ? "text-red-600" : "text-blue-600";
 }
 
 const STATUS_LABEL: Record<ConnectionStatus, [string, string]> = {
@@ -103,10 +103,10 @@ export default function Dashboard() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-800 px-4 py-3">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-4 py-3">
         <h1 className="text-lg font-semibold">{APP_TITLE}</h1>
         <div className="flex items-center gap-3 text-sm">
-          <span className="flex items-center gap-1.5 text-gray-400">
+          <span className="flex items-center gap-1.5 text-gray-600">
             <span className={`h-2 w-2 rounded-full ${statusDot}`} />
             {statusLabel}
           </span>
@@ -115,33 +115,33 @@ export default function Dashboard() {
               🔔 알림·소리 켜기
             </button>
           )}
-          {permission === "denied" && <span className="text-xs text-red-400">브라우저 알림이 차단됨 (사이트 설정에서 허용)</span>}
+          {permission === "denied" && <span className="text-xs text-red-600">브라우저 알림이 차단됨 (사이트 설정에서 허용)</span>}
         </div>
       </header>
 
       {pending.length > 0 && (
-        <div className="flex flex-col gap-1 border-b border-amber-700 bg-amber-950/60 px-4 py-2">
+        <div className="flex flex-col gap-1 border-b border-amber-300 bg-amber-50 px-4 py-2">
           {pending.slice(0, 3).map((event) => (
-            <p key={event.id} className="text-sm text-amber-200">
+            <p key={event.id} className="text-sm text-amber-900">
               🔔 <b>{event.name}</b> {event.side === "high" ? "최고가" : "최저가"} 도달 — 현재가 {formatPrice(event.price)}원 (목표{" "}
               {formatPrice(event.target)}원)
             </p>
           ))}
-          <button onClick={() => setPending([])} className="self-start text-xs text-amber-400 underline">
+          <button onClick={() => setPending([])} className="self-start text-xs text-amber-700 underline">
             확인 ({pending.length}건)
           </button>
         </div>
       )}
 
       <div className="flex flex-1 flex-col md:flex-row">
-        <aside className="flex w-full flex-col gap-4 border-gray-800 p-4 md:w-80 md:border-r">
+        <aside className="flex w-full flex-col gap-4 border-gray-200 p-4 md:w-80 md:border-r">
           <section>
-            <h2 className="mb-2 text-sm font-medium text-gray-400">종목 추가</h2>
+            <h2 className="mb-2 text-sm font-medium text-gray-600">종목 추가</h2>
             <WatchItemForm onSubmit={upsert} />
           </section>
 
           <section className="flex flex-col gap-2">
-            <h2 className="text-sm font-medium text-gray-400">감시 목록</h2>
+            <h2 className="text-sm font-medium text-gray-600">감시 목록</h2>
             {items.length === 0 && <p className="text-sm text-gray-500">종목을 추가하세요.</p>}
             {items.map((item) => (
               <WatchRow
@@ -167,7 +167,7 @@ export default function Dashboard() {
           {selectedItem ? (
             <>
               <QuoteSummary item={selectedItem} feed={selectedFeed} />
-              <div className="h-[420px] rounded-lg border border-gray-800 p-2">
+              <div className="h-[420px] rounded-lg border border-gray-200 p-2">
                 <StockChart key={selectedItem.symbol} item={selectedItem} history={selectedFeed?.history ?? []} />
               </div>
             </>
@@ -176,7 +176,7 @@ export default function Dashboard() {
           )}
 
           <section>
-            <h2 className="mb-2 text-sm font-medium text-gray-400">알람 기록</h2>
+            <h2 className="mb-2 text-sm font-medium text-gray-600">알람 기록</h2>
             {alarmLog.length === 0 ? (
               <p className="text-sm text-gray-500">아직 울린 알람이 없습니다.</p>
             ) : (
@@ -185,10 +185,10 @@ export default function Dashboard() {
                   <li key={event.id} className="flex gap-3">
                     <span className="text-gray-500">{new Date(event.timestamp).toLocaleTimeString("ko-KR")}</span>
                     <span>{event.name}</span>
-                    <span className={event.side === "high" ? "text-red-400" : "text-blue-400"}>
+                    <span className={event.side === "high" ? "text-red-600" : "text-blue-600"}>
                       {event.side === "high" ? "최고가" : "최저가"} {formatPrice(event.target)} 도달
                     </span>
-                    <span className="text-gray-400">현재가 {formatPrice(event.price)}</span>
+                    <span className="text-gray-600">현재가 {formatPrice(event.price)}</span>
                   </li>
                 ))}
               </ul>
@@ -215,7 +215,7 @@ interface WatchRowProps {
 function WatchRow({ item, feed, active, editing, onSelect, onEdit, onSave, onCancel, onRemove }: WatchRowProps) {
   if (editing) {
     return (
-      <div className="rounded-lg border border-gray-600 p-2">
+      <div className="rounded-lg border border-gray-300 p-2">
         <WatchItemForm initial={item} onSubmit={onSave} onCancel={onCancel} />
       </div>
     );
@@ -228,7 +228,7 @@ function WatchRow({ item, feed, active, editing, onSelect, onEdit, onSave, onCan
   return (
     <div
       onClick={onSelect}
-      className={`cursor-pointer rounded-lg border p-2 text-sm ${active ? "border-gray-400 bg-gray-900" : "border-gray-800 hover:bg-gray-900"}`}
+      className={`cursor-pointer rounded-lg border p-2 text-sm ${active ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:bg-gray-50"}`}
     >
       <div className="flex items-baseline justify-between">
         <span className="font-medium">
@@ -236,10 +236,10 @@ function WatchRow({ item, feed, active, editing, onSelect, onEdit, onSave, onCan
         </span>
         <span className={`font-mono ${changeColor(change?.diff)}`}>{formatPrice(quote?.price)}</span>
       </div>
-      <div className="mt-1 flex items-center justify-between text-xs text-gray-400">
+      <div className="mt-1 flex items-center justify-between text-xs text-gray-600">
         <span>
-          알람 <span className="text-blue-400">{formatPrice(item.lowTarget)}</span> ~{" "}
-          <span className="text-red-400">{formatPrice(item.highTarget)}</span>
+          알람 <span className="text-blue-600">{formatPrice(item.lowTarget)}</span> ~{" "}
+          <span className="text-red-600">{formatPrice(item.highTarget)}</span>
         </span>
         <span className="flex gap-2">
           <button
@@ -247,7 +247,7 @@ function WatchRow({ item, feed, active, editing, onSelect, onEdit, onSave, onCan
               e.stopPropagation();
               onEdit();
             }}
-            className="hover:text-gray-100"
+            className="hover:text-gray-900"
           >
             수정
           </button>
@@ -256,13 +256,13 @@ function WatchRow({ item, feed, active, editing, onSelect, onEdit, onSave, onCan
               e.stopPropagation();
               onRemove();
             }}
-            className="hover:text-red-400"
+            className="hover:text-red-600"
           >
             삭제
           </button>
         </span>
       </div>
-      {feed?.error && <p className="mt-1 text-xs text-red-400">{feed.error}</p>}
+      {feed?.error && <p className="mt-1 text-xs text-red-600">{feed.error}</p>}
     </div>
   );
 }
@@ -271,13 +271,13 @@ function QuoteSummary({ item, feed }: { item: WatchItem; feed: SymbolFeed | unde
   const quote = feed?.latest ?? null;
   const change = changeOf(quote);
   const stats: [string, string, string?][] = [
-    ["장중 최고가", formatPrice(quote?.dayHigh), "text-red-400"],
-    ["장중 최저가", formatPrice(quote?.dayLow), "text-blue-400"],
+    ["장중 최고가", formatPrice(quote?.dayHigh), "text-red-600"],
+    ["장중 최저가", formatPrice(quote?.dayLow), "text-blue-600"],
     ["시가", formatPrice(quote?.open)],
     ["전일 종가", formatPrice(quote?.prevClose)],
     ["거래량", formatPrice(quote?.volume)],
-    ["목표 최고가", formatPrice(item.highTarget), "text-amber-400"],
-    ["목표 최저가", formatPrice(item.lowTarget), "text-violet-400"],
+    ["목표 최고가", formatPrice(item.highTarget), "text-amber-700"],
+    ["목표 최저가", formatPrice(item.lowTarget), "text-violet-600"],
   ];
 
   return (
@@ -294,13 +294,13 @@ function QuoteSummary({ item, feed }: { item: WatchItem; feed: SymbolFeed | unde
       </div>
       <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
         {stats.map(([label, value, color]) => (
-          <div key={label} className="rounded-md border border-gray-800 px-3 py-2">
+          <div key={label} className="rounded-md border border-gray-200 px-3 py-2">
             <dt className="text-xs text-gray-500">{label}</dt>
             <dd className={`font-mono text-sm ${color ?? ""}`}>{value}</dd>
           </div>
         ))}
       </dl>
-      {feed?.error && <p className="text-sm text-red-400">{feed.error}</p>}
+      {feed?.error && <p className="text-sm text-red-600">{feed.error}</p>}
     </section>
   );
 }

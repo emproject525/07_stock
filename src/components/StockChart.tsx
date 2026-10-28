@@ -17,11 +17,11 @@ import type { Quote, WatchItem } from "@/lib/types";
 const KST_OFFSET_SEC = 9 * 60 * 60;
 
 const COLORS = {
-  line: "#e5e7eb",
-  dayHigh: "#f87171",
-  dayLow: "#60a5fa",
-  highTarget: "#f59e0b",
-  lowTarget: "#a78bfa",
+  line: "#111827",
+  dayHigh: "#dc2626",
+  dayLow: "#2563eb",
+  highTarget: "#d97706",
+  lowTarget: "#7c3aed",
 };
 
 type LineKey = "dayHigh" | "dayLow" | "highTarget" | "lowTarget";
@@ -56,10 +56,10 @@ export default function StockChart({ history, item }: Props) {
 
     const chart = createChart(container, {
       autoSize: true,
-      layout: { background: { type: ColorType.Solid, color: "transparent" }, textColor: "#9ca3af" },
-      grid: { vertLines: { color: "#1f2937" }, horzLines: { color: "#1f2937" } },
-      timeScale: { timeVisible: true, secondsVisible: true, borderColor: "#374151" },
-      rightPriceScale: { borderColor: "#374151" },
+      layout: { background: { type: ColorType.Solid, color: "transparent" }, textColor: "#4b5563" },
+      grid: { vertLines: { color: "#f3f4f6" }, horzLines: { color: "#f3f4f6" } },
+      timeScale: { timeVisible: true, secondsVisible: true, borderColor: "#d1d5db" },
+      rightPriceScale: { borderColor: "#d1d5db" },
       localization: { priceFormatter: (price: number) => Math.round(price).toLocaleString() },
     });
     chartRef.current = chart;

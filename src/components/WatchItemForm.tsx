@@ -44,7 +44,7 @@ export default function WatchItemForm({ initial, onSubmit, onCancel }: Props) {
   };
 
   const inputClass =
-    "w-full rounded-md border border-gray-700 bg-gray-900 px-2 py-1.5 text-sm outline-none focus:border-gray-400";
+    "w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-500";
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-2">
@@ -73,13 +73,13 @@ export default function WatchItemForm({ initial, onSubmit, onCancel }: Props) {
           inputMode="numeric"
         />
       </div>
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p className="text-xs text-red-600">{error}</p>}
       <div className="flex gap-2">
-        <button type="submit" className="flex-1 rounded-md bg-gray-100 py-1.5 text-sm font-medium text-gray-900 hover:bg-white">
+        <button type="submit" className="flex-1 rounded-md bg-gray-900 py-1.5 text-sm font-medium text-white hover:bg-gray-700">
           {initial ? "저장" : "추가"}
         </button>
         {onCancel && (
-          <button type="button" onClick={onCancel} className="rounded-md border border-gray-700 px-3 py-1.5 text-sm hover:bg-gray-800">
+          <button type="button" onClick={onCancel} className="rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-100">
             취소
           </button>
         )}
