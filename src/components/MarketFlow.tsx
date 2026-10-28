@@ -8,6 +8,8 @@ const ORDER_BOOK_INTERVAL_MS = 10_000;
 /** 투자자 동향은 하루 단위 확정치라 자주 볼 필요가 없다 */
 const INVESTOR_INTERVAL_MS = 60_000;
 const INVESTOR_DAYS = 5;
+/** 매도·매수 각각 보여줄 호가 단계 수 */
+const VISIBLE_LEVELS = 5;
 
 function formatSigned(n: number) {
   return `${n > 0 ? "+" : ""}${n.toLocaleString()}`;
@@ -19,15 +21,28 @@ function signColor(n: number) {
   return n > 0 ? "text-red-600" : "text-blue-600";
 }
 
-export default function MarketFlow({ symbol }: { symbol: string }) {
-  const orderBook = usePolling<OrderBook>(`/api/market?symbol=${symbol}&type=orderbook`, ORDER_BOOK_INTERVAL_MS);
+interface Props {
+  symbol: string;
+  /** 실시간 스트림으로 받은 호가. 있으면 네이버 지연 호가 대신 이것을 보여준다 */
+  liveOrderBook: OrderBook | null;
+}
+
+export default function MarketFlow({ symbol, liveOrderBook }: Props) {
+  const delayedOrderBook = usePolling<OrderBook>(
+    liveOrderBook ? null : `/api/market?symbol=${symbol}&type=orderbook`,
+    ORDER_BOOK_INTERVAL_MS,
+  );
   const investors = usePolling<InvestorTrend[]>(`/api/market?symbol=${symbol}&type=investors`, INVESTOR_INTERVAL_MS);
+  const orderBook = liveOrderBook ?? delayedOrderBook.data;
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <section className="rounded-lg border border-gray-200 p-4">
-        <SectionTitle title="호가 잔량" note="대기 주문 · ⚠️ 지연 데이터 (현재가보다 늦음)" />
-        {orderBook.data ? <OrderBookView book={orderBook.data} /> : <Placeholder error={orderBook.error} />}
+        <SectionTitle
+          title="호가 잔량"
+          note={liveOrderBook ? "대기 주문 · 🟢 실시간" : "대기 주문 · ⚠️ 지연 데이터 (현재가보다 늦음)"}
+        />
+        {orderBook ? <OrderBookView book={orderBook} /> : <Placeholder error={delayedOrderBook.error} />}
       </section>
       <section className="rounded-lg border border-gray-200 p-4">
         <SectionTitle title="투자자별 순매수" note="일별 · 장 마감 후 확정치 (단위: 주)" />
@@ -53,7 +68,10 @@ function Placeholder({ error }: { error: string | null }) {
 function OrderBookView({ book }: { book: OrderBook }) {
   const total = book.totalAsk + book.totalBid;
   const bidRatio = total > 0 ? (book.totalBid / total) * 100 : 50;
-  const maxQuantity = Math.max(1, ...book.asks.map((l) => l.quantity), ...book.bids.map((l) => l.quantity));
+  // 현재가에 가까운 호가만 보여준다 (asks·bids 모두 높은 가격 → 낮은 가격 순)
+  const asks = book.asks.slice(-VISIBLE_LEVELS);
+  const bids = book.bids.slice(0, VISIBLE_LEVELS);
+  const maxQuantity = Math.max(1, ...asks.map((l) => l.quantity), ...bids.map((l) => l.quantity));
   const verdict = bidRatio > 55 ? "매수 우세" : bidRatio < 45 ? "매도 우세" : "팽팽함";
 
   return (
@@ -83,14 +101,14 @@ function OrderBookView({ book }: { book: OrderBook }) {
           </tr>
         </thead>
         <tbody>
-          {book.asks.map((level) => (
+          {asks.map((level) => (
             <tr key={`ask-${level.price}`} className="bg-blue-50/50">
               <QuantityCell quantity={level.quantity} max={maxQuantity} side="ask" />
               <td className="py-0.5 text-center text-blue-600">{level.price.toLocaleString()}</td>
               <td />
             </tr>
           ))}
-          {book.bids.map((level) => (
+          {bids.map((level) => (
             <tr key={`bid-${level.price}`} className="bg-red-50/50">
               <td />
               <td className="py-0.5 text-center text-red-600">{level.price.toLocaleString()}</td>

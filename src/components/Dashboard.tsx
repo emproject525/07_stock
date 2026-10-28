@@ -171,7 +171,7 @@ export default function Dashboard() {
               <div className="h-[420px] rounded-lg border border-gray-200 p-2">
                 <StockChart key={selectedItem.symbol} item={selectedItem} history={selectedFeed?.history ?? []} />
               </div>
-              <MarketFlow symbol={selectedItem.symbol} />
+              <MarketFlow symbol={selectedItem.symbol} liveOrderBook={selectedFeed?.orderBook ?? null} />
             </>
           ) : (
             <p className="text-gray-500">왼쪽에서 종목을 추가하면 실시간 차트가 표시됩니다.</p>
@@ -281,6 +281,10 @@ function QuoteSummary({ item, feed }: { item: WatchItem; feed: SymbolFeed | unde
     ["목표 최고가", formatPrice(item.highTarget), "text-amber-700"],
     ["목표 최저가", formatPrice(item.lowTarget), "text-violet-600"],
   ];
+  // 체결강도 100 초과 = 매수 체결이 매도 체결보다 많음
+  if (quote?.strength !== undefined) {
+    stats.splice(2, 0, ["체결강도", quote.strength.toFixed(2), quote.strength >= 100 ? "text-red-600" : "text-blue-600"]);
+  }
 
   return (
     <section className="flex flex-col gap-3">
@@ -294,7 +298,7 @@ function QuoteSummary({ item, feed }: { item: WatchItem; feed: SymbolFeed | unde
           </span>
         )}
       </div>
-      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-8">
         {stats.map(([label, value, color]) => (
           <div key={label} className="rounded-md border border-gray-200 px-3 py-2">
             <dt className="text-xs text-gray-500">{label}</dt>

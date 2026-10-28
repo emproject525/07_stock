@@ -1,13 +1,14 @@
-import { getQuoteProvider } from "@/lib/providers";
+import { getMarketHub } from "@/lib/marketHub";
 import type { StreamEvent } from "@/lib/types";
 
-const DEFAULT_INTERVAL_MS = 2_000;
-const MIN_INTERVAL_MS = 500;
+/** 장 마감 후처럼 푸시가 없을 때도 연결이 끊기지 않도록 보내는 주석 줄 주기 */
+const HEARTBEAT_MS = 15_000;
 const SYMBOL_PATTERN = /^[0-9A-Z]{6}$/;
 const MAX_SYMBOLS = 20;
 
 /**
- * 감시 종목들의 시세를 주기적으로 조회해 Server-Sent Events로 흘려보낸다.
+ * 감시 종목들의 시세를 Server-Sent Events로 흘려보낸다.
+ * 접속 직후 서버가 쌓아 둔 데이터(snapshot)를 먼저 보내고, 이후 실시간 데이터를 보낸다.
  * GET /api/stream?symbols=005930,000660
  */
 export async function GET(request: Request) {
@@ -19,43 +20,34 @@ export async function GET(request: Request) {
 
   if (symbols.length === 0) return new Response("symbols 파라미터가 필요합니다.", { status: 400 });
 
-  const intervalMs = Math.max(MIN_INTERVAL_MS, Number(process.env.QUOTE_INTERVAL_MS) || DEFAULT_INTERVAL_MS);
-  const provider = getQuoteProvider();
+  const hub = getMarketHub();
   const encoder = new TextEncoder();
-  let timer: ReturnType<typeof setTimeout> | undefined;
   let closed = false;
+  let stop = () => {};
+
+  const shutdown = () => {
+    if (closed) return;
+    closed = true;
+    stop();
+  };
 
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
-      const send = (event: StreamEvent) => {
-        if (!closed) controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+      const write = (chunk: string) => {
+        if (!closed) controller.enqueue(encoder.encode(chunk));
       };
-
-      const tick = async () => {
-        // 증권사 API 초당 호출 제한을 피하기 위해 종목별로 순차 조회한다
-        for (const symbol of symbols) {
-          if (closed) return;
-          try {
-            send({ type: "quote", quote: await provider.getQuote(symbol) });
-          } catch (e) {
-            send({ type: "error", symbol, message: e instanceof Error ? e.message : String(e) });
-          }
-        }
-        if (!closed) timer = setTimeout(tick, intervalMs);
+      const send = (event: StreamEvent) => write(`data: ${JSON.stringify(event)}\n\n`);
+      const heartbeat = setInterval(() => write(": ping\n\n"), HEARTBEAT_MS);
+      const unwatches = symbols.map((symbol) => hub.watch(symbol, send));
+      stop = () => {
+        clearInterval(heartbeat);
+        unwatches.forEach((unwatch) => unwatch());
       };
-
-      void tick();
     },
-    cancel() {
-      closed = true;
-      clearTimeout(timer);
-    },
+    cancel: shutdown,
   });
 
-  request.signal.addEventListener("abort", () => {
-    closed = true;
-    clearTimeout(timer);
-  });
+  request.signal.addEventListener("abort", shutdown);
 
   return new Response(stream, {
     headers: {

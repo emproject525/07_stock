@@ -1,6 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { Quote, QuoteProvider } from "@/lib/types";
+import type { Quote, QuoteProvider, RealtimeListener } from "@/lib/types";
+import { KisRealtimeClient } from "./kisRealtime";
 
 const REAL_BASE_URL = "https://openapi.koreainvestment.com:9443";
 const PAPER_BASE_URL = "https://openapivts.koreainvestment.com:29443";
@@ -43,8 +44,8 @@ interface KisPriceResponse {
 }
 
 /**
- * 한국투자증권 KIS Developers REST API 기반 공급자.
- * 주식현재가 시세(FHKST01010100)를 폴링한다.
+ * 한국투자증권 KIS Developers 기반 공급자.
+ * 초기 스냅샷은 REST 주식현재가 시세(FHKST01010100), 이후는 웹소켓 실시간 체결가·호가를 쓴다.
  */
 export class KisQuoteProvider implements QuoteProvider {
   readonly name = "kis";
@@ -55,8 +56,16 @@ export class KisQuoteProvider implements QuoteProvider {
   /** 이 시각 전에는 토큰 발급을 다시 시도하지 않는다 */
   private tokenRetryAt = 0;
 
+  private readonly realtime: KisRealtimeClient;
+
   constructor(private readonly config: KisConfig) {
     this.baseUrl = config.paper ? PAPER_BASE_URL : REAL_BASE_URL;
+    this.realtime = new KisRealtimeClient({ ...config, restBaseUrl: this.baseUrl });
+  }
+
+  /** 웹소켓으로 체결가·호가를 실시간 수신한다 */
+  subscribe(symbol: string, listener: RealtimeListener): () => void {
+    return this.realtime.subscribe(symbol, listener);
   }
 
   async getQuote(symbol: string): Promise<Quote> {

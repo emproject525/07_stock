@@ -1,16 +1,20 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Quote, StreamEvent } from "@/lib/types";
+import type { OrderBook, Quote, StreamEvent } from "@/lib/types";
 
-/** 종목당 차트에 유지할 최대 포인트 수 */
-const MAX_HISTORY = 5_000;
+/** 종목당 브라우저에 유지할 최대 시세 수 */
+const MAX_HISTORY = 2_000;
 
 export interface SymbolFeed {
   latest: Quote | null;
   history: Quote[];
+  /** 실시간 호가 (실시간 공급자일 때만 채워짐) */
+  orderBook: OrderBook | null;
   error: string | null;
 }
+
+const EMPTY_FEED: SymbolFeed = { latest: null, history: [], orderBook: null, error: null };
 
 export type ConnectionStatus = "idle" | "connecting" | "open" | "error";
 
@@ -35,24 +39,31 @@ export function useQuoteStream(symbols: string[], onQuote: (quote: Quote) => voi
     source.onopen = () => setStatus("open");
     // EventSource는 끊기면 자동 재연결한다
     source.onerror = () => setStatus(source.readyState === EventSource.CLOSED ? "error" : "connecting");
+    const updateFeed = (symbol: string, update: (feed: SymbolFeed) => Partial<SymbolFeed>) =>
+      setFeeds((prev) => {
+        const feed = prev[symbol] ?? EMPTY_FEED;
+        return { ...prev, [symbol]: { ...feed, ...update(feed) } };
+      });
+
     source.onmessage = (message) => {
       const event = JSON.parse(message.data) as StreamEvent;
-      if (event.type === "quote") {
+      if (event.type === "snapshot") {
+        // 접속(새로고침 포함) 직후 서버가 쌓아 둔 데이터로 교체한다
+        const latest = event.history.at(-1) ?? null;
+        updateFeed(event.symbol, () => ({ latest, history: event.history, orderBook: event.orderBook, error: null }));
+        if (latest) onQuoteRef.current(latest);
+      } else if (event.type === "quote") {
         const { quote } = event;
-        setFeeds((prev) => {
-          const history = [...(prev[quote.symbol]?.history ?? []), quote].slice(-MAX_HISTORY);
-          return { ...prev, [quote.symbol]: { latest: quote, history, error: null } };
-        });
-        onQuoteRef.current(quote);
-      } else {
-        setFeeds((prev) => ({
-          ...prev,
-          [event.symbol]: {
-            latest: prev[event.symbol]?.latest ?? null,
-            history: prev[event.symbol]?.history ?? [],
-            error: event.message,
-          },
+        updateFeed(quote.symbol, (feed) => ({
+          latest: quote,
+          history: [...feed.history, quote].slice(-MAX_HISTORY),
+          error: null,
         }));
+        onQuoteRef.current(quote);
+      } else if (event.type === "orderbook") {
+        updateFeed(event.symbol, () => ({ orderBook: event.orderBook }));
+      } else {
+        updateFeed(event.symbol, () => ({ error: event.message }));
       }
     };
 
